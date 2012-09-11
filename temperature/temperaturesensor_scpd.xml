@@ -1,0 +1,86 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+<specVersion>
+    <major>1</major>
+    <minor>0</minor>
+</specVersion>
+<actionList>
+    <action>
+        <name>GetApplication</name>
+        <argumentList>
+        <argument>
+        <name>CurrentApplication</name>
+        <direction>out</direction>
+        <retval />
+        <relatedStateVariable>Application</relatedStateVariable>
+        </argument>
+        </argumentList>
+    </action>
+    <action>
+        <name>GetCurrentTemperature</name>
+        <argumentList>
+        <argument>
+        <name>CurrentTemp</name>
+        <direction>out</direction>
+        <retval />
+        <relatedStateVariable>CurrentTemperature</relatedStateVariable>
+        </argument>
+        </argumentList>
+    </action>
+    <action>
+        <name>GetName</name>
+        <argumentList>
+        <argument>
+        <name>CurrentName</name>
+        <direction>out</direction>
+        <retval />
+        <relatedStateVariable>Name</relatedStateVariable>
+        </argument>
+        </argumentList>
+    </action>
+    <action>
+        <name>X_GetZone</name>
+        <argumentList>
+            <argument>
+                <name>CurrentZone</name>
+                <direction>out</direction>
+                <retval />
+                <relatedStateVariable>X_Zone</relatedStateVariable>
+            </argument>
+        </argumentList>
+    </action>
+    <action>
+        <name>X_SetZone</name>
+        <argumentList>
+            <argument>
+                <name>NewZone</name>
+                <direction>in</direction>
+                <relatedStateVariable>X_Zone</relatedStateVariable>
+            </argument>
+        </argumentList>
+    </action>
+</actionList>
+<serviceStateTable>
+    <stateVariable sendEvents="yes">
+        <name>Application</name>
+        <dataType>string</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+        <name>CurrentTemperature</name>
+        <dataType>i4</dataType>
+        <allowedValueRange>
+            <minimum>-3000</minimum>
+            <maximum>10000</maximum>
+            <step>1</step>
+        </allowedValueRange>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+        <name>Name</name>
+        <dataType>string</dataType>
+    </stateVariable>
+    <stateVariable sendEvents="yes">
+        <name>X_Zone</name>
+        <dataType>string</dataType>
+    </stateVariable>
+</serviceStateTable>
+</scpd>

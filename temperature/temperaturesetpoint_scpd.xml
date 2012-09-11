@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:schemas-upnp-org:service-1-0">
+    <specVersion>
+        <major>1</major>
+        <minor>0</minor>
+    </specVersion>
+<actionList>
+    <action>
+        <name>GetApplication</name>
+        <argumentList>
+            <argument>
+                <name>CurrentApplication</name>
+                <direction>out</direction>
+                <retval />
+                <relatedStateVariable>Application</relatedStateVariable>
+            </argument>
+        </argumentList>
+        </action>
+        <action>
+            <name>SetCurrentSetpoint</name>
+            <argumentList>
+                <argument>
+                    <name>NewCurrentSetpoint</name>
+                    <direction>in</direction>
+                    <relatedStateVariable>CurrentSetpoint</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>GetCurrentSetpoint</name>
+            <argumentList>
+                <argument>
+                    <name>CurrentSP</name>
+                    <direction>out</direction>
+                    <retval />
+                    <relatedStateVariable>CurrentSetpoint</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>GetSetpointAchieved</name>
+            <argumentList>
+                <argument>
+                    <name>CurrentSPA</name>
+                    <direction>out</direction>
+                    <retval />
+                    <relatedStateVariable>SetpointAchieved</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
+        <action>
+            <name>GetName</name>
+            <argumentList>
+                <argument>
+                <name>CurrentName</name>
+                <direction>out</direction>
+                <retval />
+                <relatedStateVariable>Name</relatedStateVariable>
+                </argument>
+            </argumentList>
+        </action>
+    </actionList>
+    <serviceStateTable>
+        <stateVariable sendEvents="yes">
+            <name>Application</name>
+            <dataType>string</dataType>
+            <allowedValueList>
+                <allowedValue>Heating</allowedValue>
+            </allowedValueList>
+        </stateVariable>
+        <stateVariable sendEvents="yes">
+            <name>CurrentSetpoint</name>
+            <dataType>i4</dataType>
+            <allowedValueRange>
+                <minimum>0</minimum>
+                <maximum>5000</maximum>
+                <step>1</step>
+            </allowedValueRange>
+        </stateVariable>
+        <stateVariable sendEvents="yes">
+            <name>SetpointAchieved</name>
+            <dataType>boolean</dataType>
+            <defaultValue>0</defaultValue>
+            <allowedValueList>
+                <allowedValue>0</allowedValue>
+                <allowedValue>1</allowedValue>
+            </allowedValueList>
+        </stateVariable>
+        <stateVariable sendEvents="yes">
+            <name>Name</name>
+            <dataType>string</dataType>
+        </stateVariable>
+    </serviceStateTable>
+</scpd>
