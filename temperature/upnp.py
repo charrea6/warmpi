@@ -14,14 +14,12 @@ class TemperatureSensor(Service):
             'urn:schemas-upnp-org:service:TemperatureSensor:1',
             scpd_xml_filepath=sensor_spcd)
         self.sensor = sensor
-        self.name = sensor.name
         self.application = 'Room'
-        self.zone = shelf.get(sensor.name + '\zone', '')
-        self.set_state_variable('Name', self.name)
+        self.set_state_variable('Name', self.sensor.name)
         self.set_state_variable('Application', self.application)
         self.set_state_variable('CurrentTemperature', self.get_temperature())
-        self.set_state_variable('X_Zone', self.zone)
-        reactor.add_timer(10, self.monitor_temperature)
+        self.set_state_variable('X_Zone', self.sensor.zone)
+        sensor.register_temperature_listener(self.__temperature_changed)
 
     def get_temperature(self):
         return int(self.sensor.temperature * 100)
@@ -33,21 +31,19 @@ class TemperatureSensor(Service):
         return {'CurrentApplication': self.application}
 
     def soap_GetName(self, *args, **kwargs):
-        return {'CurrentName': self.name}
+        return {'CurrentName': self.sensor.name}
 
     def soap_X_GetZone(self, *args, **kwargs):
-        return {'CurrentZone': self.zone}
+        return {'CurrentZone': self.sensor.zone}
 
     def soap_X_SetZone(self, *args, **kwargs):
-        self.zone = kwargs['NewZone']
-        shelf[self.sensor.name + '\zone'] = self.zone
-        self.set_state_variable('X_Zone', self.zone)
+        self.sensor.zone = kwargs['NewZone']
+        self.set_state_variable('X_Zone', self.sensor.zone)
         return {}
 
-    def monitor_temperature(self):
+    def __temperature_changed(self, sensor, temp):
         t = self.get_temperature()
         self.set_state_variable('CurrentTemperature', t)
-        return True
 
 
 class TemperatureSetpoint(Service):
@@ -56,59 +52,33 @@ class TemperatureSetpoint(Service):
             'urn:schemas-upnp-org:service:TemperatureSetpoint:1',
             scpd_xml_filepath=setpoint_spcd)
         self.sensor = sensor
-        sensor.add_temperature_changed(self.__tempurature_changed)
-        self.setpoint = shelf.get(sensor.name + '\setpoint', 5000) # Start off at max so we don't switch on the
-        self.setpoint_achieved = False
-        self.setpoint_achieved_cbs = []
-        self.check_setpoint()
+        sensor.register_setpoint_achieved_listener(self.__setpoint_achieved_changed)
 
     def soap_GetApplication(self, *args, **kwargs):
         return {'CurrentApplication':'Heating'}
 
     def soap_SetCurrentSetpoint(self, *args, **kwargs):
-        self.setpoint = int(kwargs['NewCurrentSetpoint'])
-        shelf[self.sensor.name + '\setpoint'] = self.setpoint
-        self.check_setpoint()
+        self.sensor.setpoint = int(kwargs['NewCurrentSetpoint']) / 100.0
         return {}
 
     def soap_GetCurrentSetpoint(self, *args, **kwargs):
-        return {'CurrentSP':self.setpoint}
+        return {'CurrentSP':int(self.sensor.setpoint * 100)}
 
     def soap_GetSetpointAchieved(self, *args, **kwargs):
-        return {'CurrentSPA':self.setpoint_achieved}
+        return {'CurrentSPA':int(self.sensor.setpoint_achieved)}
 
     def soap_GetName(self, *args, **kwargs):
         return {'CurrentName':self.sensor.name}
 
-    def __tempurature_changed(self, sensor, temp):
-        self.check_setpoint()
-
-    def check_setpoint(self):
-        orig_setpoint_achieved = self.setpoint_achieved
-        self.setpoint_achieved = (self.sensor.temperature * 100) >= self.setpoint
-        if orig_setpoint_achieved != self.setpoint_achieved:
-            self.set_state_variable('SetpointAchieved', int(self.setpoint_achieved))
-            for cb in self.setpoint_achieved_cbs:
-                cb(self)
-
-    def register_setpoint_achieved(self, cb):
-        self.setpoint_achieved_cbs.append(cb)
+    def __setpoint_achieved_changed(self, sensor):
+        self.set_state_variable('SetpointAchieved', int(self.sensor.setpoint_achieved))
 
 
 class TemperatureDevice(Device):
     def __init__(self, sensor):
-        name = sensor.name
-        uuid = shelf.get(name + '\uuid', None)
-        if uuid is None:
-            import uuid
-            uuid = 'uuid:%s' % uuid.uuid4()
-            shelf[name + '\uuid'] = uuid
         super(TemperatureDevice,self).__init__('urn:schemas-home-lan:device:TemperatureMonitor:1',
-            gethostname() + ' : ' + name, udn=uuid)
+            gethostname() + ' : ' + sensor.name, udn=sensor.uuid)
         self.sensor = TemperatureSensor(sensor)
         self.setpoint = TemperatureSetpoint(sensor)
         self += self.sensor
         self += self.setpoint
-
-
-shelf = {}
