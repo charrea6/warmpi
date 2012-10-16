@@ -1,0 +1,95 @@
+#!/usr/bin/python
+import threading
+import logging
+
+from warmpi import SubSystem, get_optparse
+from warmpi.relayctrl.client import LocalClient
+from warmpi.temperature import oregon
+from warmpi.temperature.thermostat import Thermostat
+
+class TemperatureSubSystem(SubSystem):
+    def __init__(self, user, daemonize):
+        self.thermostats = {}
+        self.devices = []
+        self.init_lock = threading.Lock()
+        with self.init_lock:
+            super(TemperatureSubSystem, self).__init__('temperature', user, daemonize)
+        self.relay = LocalClient()
+        self.create_server({'get_temperatures':self.get_temperatures,
+                            'get_thermostats':self.get_thermostats,
+                            'get_thermostat_temperature': self.get_thermostat_temperature,
+                            'set_thermostat_zone' : self.set_thermostat_zone,
+                            'get_thermostat_zone' : self.get_thermostat_zone,
+                            'set_thermostat_setpoint': self.set_thermostat_setpoint,
+                            'get_thermostat_setpoint': self.get_thermostat_setpoint,
+                            'set_zone_setpoint' : self.set_zone_setpoint})
+
+    def privileged_init(self):
+        self.ems100 = oregon.EMS100(self.sensor_detected)
+
+    def setpoint_achieved_changed(self, setpoint):
+        heating_required = False
+        for ts in self.thermostats.values():
+            if not ts.setpoint_achieved:
+                heating_required = True
+                break
+        self.relay.set_state('CFH', heating_required)
+
+    def sensor_detected(self, sensor):
+        logging.info('Sensor detected: %s', sensor.name)
+        with self.init_lock:
+            ts = Thermostat(sensor, self.shelf)
+            self.thermostats[sensor.name] = ts
+
+            from warmpi.temperature import upnp
+            device = upnp.TemperatureDevice(ts)
+            ts.register_setpoint_achieved_listener(self.setpoint_achieved_changed)
+            device.start()
+            self.devices.append(device)
+            self.setpoint_achieved_changed(None)
+
+    def after_stop(self):
+        for device in self.devices:
+            device.stop()
+        super(TemperatureSubSystem, self).after_stop()
+
+
+    def get_temperatures(self):
+        result = {}
+        for name, ts in self.thermostats.items():
+            result[name] = (ts.zone, ts.temperature)
+        return result
+        
+    def get_thermostats(self):
+        return self.thermostats.keys()
+        
+    def get_thermostat_temperature(self, thermostat):
+        return self.thermostats[thermostat].temperature
+        
+    def set_thermostat_zone(self, thermostat, zone):
+        self.thermostats[thermostat].zone = zone
+    
+    def get_thermostat_zone(self, thermostat):
+        return self.thermostats[thermostat].zone
+
+    def set_thermostat_setpoint(self, thermostat, setpoint):
+        self.thermostats[thermostat].setpoint = float(setpoint)
+    
+    def get_thermostat_setpoint(self, thermostat):
+        return self.thermostats[thermostat].setpoint
+
+    def set_zone_setpoint(self, zone, setpoint):
+        for ts in self.thermostats.values:
+            if ts.zone == zone:
+                ts.setpoint = setpoint
+
+
+if __name__ == '__main__':
+    parser = get_optparse()
+    options,args = parser.parse_args()
+    try:
+        subsystem = TemperatureSubSystem(options.user, options.daemon)
+        subsystem.run()
+    except:
+        import traceback
+        traceback.print_exc()

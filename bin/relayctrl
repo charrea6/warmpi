@@ -1,0 +1,45 @@
+#!/usr/bin/python
+import optparse
+import sys
+
+from warmpi.relayctrl.client import LocalClient
+
+def print_help():
+    print '''relayctrl <relay> [on/off]
+    - <relay> is one of the following names:
+        HW
+        CH
+        CFH
+
+    - [on/off] if specified sets the state of the specified relay.
+   
+    If no new state is specified then the current state is returned.
+'''
+    sys.exit(0)
+
+if '-h' in sys.argv or '--help' in sys.argv:
+    print_help()
+elif len(sys.argv) == 2:
+    client = LocalClient()
+    s = client.get_state(sys.argv[1])
+    s = client.get_state(sys.argv[1])
+    s = client.get_state(sys.argv[1])
+    s = client.get_state(sys.argv[1])
+    if s:
+        print 'on'
+    else:
+        print 'off'
+
+elif len(sys.argv) == 3:
+    client = LocalClient()
+    if sys.argv[2].lower() == 'on':
+        s = True
+    elif sys.argv[2].lower() == 'off':
+        s = False
+    else:
+        print 'Invalid state specified!'
+        sys.exit(1)
+    client.set_state(sys.argv[1], s)
+
+else:
+    print_help()

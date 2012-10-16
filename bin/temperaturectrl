@@ -1,0 +1,102 @@
+#!/usr/bin/python
+import sys
+
+from warmpi.temperature.client import LocalClient
+
+
+def print_help():
+    if cmd == 'ls':
+        print '''ls
+
+Lists the currently detected thermostat names.
+'''
+    elif cmd == 'temps':
+        print '''temps
+
+Lists the currently detected thermostats, their zone and current temperature.
+'''
+    elif cmd == 'temp':
+        print '''temp <thermostat>
+
+Displays the temperature of the thermostat specified by <thermostat>.
+'''
+    elif cmd == 'zone':
+        print '''zone <thermostat> [<zone>]
+
+If <zone> is supplied sets the zone of the specified thermostat.
+Otherwise displays the current zone of the specified thermostat.
+'''
+    elif cmd == 'setpoint':
+        print '''setpoint <thermostat> [<setpoint>]
+
+If <setpoint> is supplied sets the setpoint (in degrees C) of the specified thermostat.
+Otherwise displays the current setpoint of the specified thermostat.
+'''
+    elif cmd == 'zonesp':
+        print '''zonesp <zone> <setpoint>
+
+Sets the setpoint of all thermostats matching the specified zone.
+'''
+    else:
+        print '''%s <command> [<args>...]
+Controls the temperature daemon.
+
+The following commands are available:
+    ls        List thermostats.
+    temps     List all thermostats and their current temperatures.
+    temp      Display a thermostat's temperature.
+    zone      Display or set a thermostat's zone.
+    setpoint  Display or set a thermostat's setpoint.
+    zonesp    Set the setpoint for all thermostats in the specified zone.
+''' % sys.argv[0]
+    sys.exit(1)
+
+cmd = ''
+
+if '-h' in sys.argv or '--help' in sys.argv:
+    args = [arg for arg in sys.argv if arg not in ('-h', '--help')]
+    if len(args) > 1:
+        cmd = args[1]
+    print_help()
+else:
+    cmd = sys.argv[1]
+    args = sys.argv[2:]
+
+client = LocalClient()
+
+if cmd == 'temps':
+    temps = client.get_temperatures().items()
+    temps.sort(lambda x,y: cmp(x[0], y[0]))
+    for thermostat,(zone, temp) in temps:
+        print '%s(%s) : %.2f' % (thermostat, zone, temp)
+elif cmd == 'ls':
+    thermostats = client.get_thermostats()
+    thermostats.sort()
+    for thermostat in thermostats:
+        print '%s' % thermostat
+elif cmd == 'temp':
+    if len(args) == 1:
+        print '%.2f' % client.get_thermostat_temperature(args[0])
+    else:
+        print_help()
+elif cmd == 'zone':
+    if len(args) == 1:
+        print client.get_thermostat_zone(args[0])
+    elif len(args) == 2:
+        client.set_thermostat_zone(args[0], args[1])
+    else:
+        print_help()
+elif cmd == 'setpoint':
+    if len(args) == 1:
+        print '%.2f' % client.get_thermostat_setpoint(args[0])
+    elif len(args) == 2:
+       client.set_thermostat_setpoint(args[0], float(args[1]))
+    else:
+        print_help()
+elif cmd == 'zonesp':
+    if len(args) == 2:
+        client.set_zone_setpoint(args[0], float(args[1]))
+    else:
+        print_help()
+else:
+    print_help()

@@ -1,29 +1,45 @@
-from brisa.core.reactors._select import SelectReactor
+#!/usr/bin/python
 import datetime
-reactor = SelectReactor()
+import logging
+import os
 
-from schedule.program import Programs, Period
-from schedule.upnp import HeatingController
-from relayctrl.client import LocalClient
+from warmpi import get_optparse,SubSystem
+from warmpi.schedule.program import Programs, Period
 
 def total_seconds(td):
     return (td.microseconds / 10.0**6) + (td.seconds + td.days * 24 * 3600)
 
-class Scheduler(object):
-    def __init__(self, path):
+class SchedulerSubSystem(SubSystem):
+    def __init__(self, user, daemon):
+        super(SchedulerSubSystem, self).__init__('scheduler', user, daemon)
+        import warmpi.relayctrl.client as relay
+        import warmpi.temperature.client as temperature
+        self.relay = relay.LocalClient()
+        self.temperature = temperature.LocalClient()
         self.current_periods = {}
         self.active_periods = {}
-        self.relay = LocalClient()
         self.timer = None
-        self.programs = Programs(path, self.programs_updated)
+        self.programs = Programs(os.path.join(self.dir, 'programs.xml'), self.programs_updated)
 
+        from warmpi.schedule.upnp import HeatingController
+        self.device = HeatingController(self.programs)
+        self.device.start()
+        self.create_server({'get_active_program':lambda : self.programs.active_program,
+                            'set_active_program':self.programs.set_active_program,
+                            'get_programs':self.programs.programs.keys,
+                            'get_program':lambda program_id: self.programs.programs[program_id],
+                            'add_program':self.programs.add_program,
+                            'remove_program':self.programs.remove_program,
+                            'add_period':self.programs.add_period,
+                            'remove_period':self.programs.remove_period})
+
+    def after_stop(self):
+        self.device.stop()
 
     def programs_updated(self, programs, reason, arg):
-        print 'Programs Updated:', reason
         self.programs = programs
         if self.programs.active_program is not None:
             self.load_periods()
-
 
     def load_periods(self):
         today = datetime.datetime.today().weekday()
@@ -42,8 +58,6 @@ class Scheduler(object):
         self.evaluate_periods()
 
     def evaluate_periods(self):
-        print 'Evaluate periods'
-
         systems = {'HW': self.evaluate_hw, 'CH':self.evaluate_ch}
         new_periods = {}
         now = datetime.datetime.now()
@@ -58,28 +72,23 @@ class Scheduler(object):
                 else:
                     if now_time < period.start and period.start < next_start_stop:
                         next_start_stop = period.start
-        try:
-            for system,evaluate in systems.items():
-                active = self.active_periods.get(system, None)
-                next = new_periods.get(system, None)
-                if active != next:
-                    evaluate(active, next)
-        except:
-            import traceback
-            traceback.print_exc()
 
+        for system,evaluate in systems.items():
+            active = self.active_periods.get(system, None)
+            next = new_periods.get(system, None)
+            if active != next:
+                try:
+                    evaluate(active, next)
+                except:
+                    logging.error('Exception while evaluating system.', exc_info=True)
         self.active_periods = new_periods
 
         if next_start_stop == datetime.time.max:
             midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
             tomorrow =  midnight + datetime.timedelta(days=1)
-            diff = total_seconds(tomorrow - now)
-            print 'Sleeping %f seconds until midnight, now %r' % (diff, now)
             self.sleep_util(tomorrow, self.load_periods)
         else:
             next_dt = now.replace(hour=next_start_stop.hour, minute=next_start_stop.minute, second=0, microsecond=0)
-            diff = total_seconds(next_dt - now)
-            print 'Sleeping %f seconds until next event, now %r next %r %r' % (diff, now, next_dt, datetime.datetime.now())
             self.sleep_util(next_dt, self.evaluate_periods)
 
     def sleep_util(self, dt_util, cb):
@@ -104,23 +113,23 @@ class Scheduler(object):
         else:
             msg = 'OFF -'
             self.relay.set_state('HW', False)
-        print '%s : Turning Hot Water %s' % (datetime.datetime.now().ctime(), msg)
+        logging.info('Turning Hot Water %s', msg)
 
     def evaluate_ch(self, previous_period, next_period):
         if previous_period is None:
             msg = 'ON  +'
+            for zone, setpoint in next_period.temperatures:
+                self.temperature.set_zone_setpoint(zone, setpoint)
             self.relay.set_state('CH', True)
         else:
             msg = 'OFF -'
             self.relay.set_state('CH', False)
-
-        print '%s : Turning Central Heating %s' % (datetime.datetime.now().ctime(), msg)
+        logging.info('Turning Central Heating %s', msg)
 
 
 if __name__ == '__main__':
-    scheduler = Scheduler('programs.xml')
-    device = HeatingController(scheduler.programs)
-    device.start()
-    reactor.add_after_stop_func(device.stop)
-    reactor.main()
+    parser = get_optparse()
+    options,args = parser.parse_args()
+    scheduler = SchedulerSubSystem(options.user, options.daemon)
+    scheduler.run()
 

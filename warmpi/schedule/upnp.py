@@ -4,7 +4,7 @@ from socket import gethostname
 from brisa.upnp.device import Device
 from brisa.upnp.device.service import Service, ErrorCode
 
-from schedule.program import Program, Period, OverlapError
+from warmpi.schedule.program import Program, Period, OverlapError
 
 heatingscheduler_scpd = os.path.join(os.path.dirname(__file__), 'heatingscheduler_scpd.xml')
 

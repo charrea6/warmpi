@@ -1,5 +1,5 @@
 
-from relayctrl import gpio
+from warmpi.relayctrl import gpio
 
 class Relay(object):
     def __init__(self, pin):
