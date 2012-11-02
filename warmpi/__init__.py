@@ -6,14 +6,36 @@ import logging
 
 import daemon
 
+LOG_PATH = '/var/log/warmpi'
 BASE_PATH = '/var/run/warmpi'
 
+class PIDFile(object):
+    def __init__(self, filename):
+        self.filename = filename
+        print 'PID File: ', self.filename
+
+    def __enter__(self):
+        with open(self.filename, 'w') as f:
+            f.write('%d\n' % os.getpid())
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.remove(self.filename)
+        
 class SubSystem(object):
     def __init__(self, name, user, daemonize):
         self.name = name
         self.dir = os.path.join(BASE_PATH, name)
         self.server = None
         self._shelf = None
+        self.daemon = None
+        if daemonize:
+            out = file(os.path.join(LOG_PATH, '%s.stdout.log' % name), 'w')
+            err = file(os.path.join(LOG_PATH, '%s.stderr.log' % name), 'w')
+            self.daemon = daemon.DaemonContext(working_directory=self.dir,
+                                 stdout=out,
+                                 stderr=err,              
+                                 pidfile=PIDFile(os.path.join(self.dir, '%s.pid' % name)))
+            self.daemon.open()
 
         # Create run directory
         if not os.path.exists(self.dir):
@@ -21,6 +43,19 @@ class SubSystem(object):
 
         os.chdir(self.dir)
 
+        # Initialise logging
+        if not os.path.exists(LOG_PATH):
+            os.makedirs(LOG_PATH)
+        logging.basicConfig(filename=os.path.join(LOG_PATH, '%s.log' % name), 
+                            level=logging.DEBUG,
+                            format="%(asctime)s - %(levelname)s - %(message)s")
+
+        # Only log error messages from brisa
+        logging.getLogger('RootLogger').setLevel(logging.ERROR)
+        logging.getLogger('core').setLevel(logging.ERROR)
+        logging.getLogger('upnp').setLevel(logging.ERROR)
+
+        # Perform subclass initialisation while we still have some privileges.
         self.privileged_init()
 
         if os.getuid() == 0:
@@ -33,17 +68,6 @@ class SubSystem(object):
             os.environ['USER'] = user
             os.environ['HOME'] = self.dir
 
-        # Initialise logging
-        logging.basicConfig(filename=os.path.join(self.dir, 'log'), 
-                            level=logging.DEBUG)
-
-        self.daemon = None
-        if daemonize:
-            self.daemon = daemon.DaemonContext(working_directory=self.dir)
-            self.daemon.open()
-
-        #from brisa.core.config import manager
-        #manager.set_parameter('brisa', 'logging', 'DEBUG')
         from brisa.core.reactors._select import SelectReactor
         self.reactor = SelectReactor()
         self.reactor.add_after_stop_func(self.after_stop)
@@ -75,6 +99,9 @@ class SubSystem(object):
     def after_stop(self):
         if self._shelf is not None:
             self._shelf.close()
+
+        if self.daemon is not None:
+            self.daemon.close()
 
 
 
