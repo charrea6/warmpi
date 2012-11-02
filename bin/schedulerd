@@ -12,10 +12,6 @@ def total_seconds(td):
 class SchedulerSubSystem(SubSystem):
     def __init__(self, user, daemon):
         super(SchedulerSubSystem, self).__init__('scheduler', user, daemon)
-        import warmpi.relayctrl.client as relay
-        import warmpi.temperature.client as temperature
-        self.relay = relay.LocalClient()
-        self.temperature = temperature.LocalClient()
         self.current_periods = {}
         self.active_periods = {}
         self.timer = None
@@ -31,7 +27,8 @@ class SchedulerSubSystem(SubSystem):
                             'add_program':self.programs.add_program,
                             'remove_program':self.programs.remove_program,
                             'add_period':self.programs.add_period,
-                            'remove_period':self.programs.remove_period})
+                            'remove_period':self.programs.remove_period,
+                            'get_active_periods':lambda : self.active_periods.items()})
 
     def after_stop(self):
         self.device.stop()
@@ -107,23 +104,31 @@ class SchedulerSubSystem(SubSystem):
             self.timer = reactor.add_timer(diff, cb)
         
     def evaluate_hw(self, previous_period, next_period):
+        import warmpi.relayctrl.client as relay
+
+        relay = relay.LocalClient()
         if previous_period is None:
             msg = 'ON  +'
-            self.relay.set_state('HW', True)
+            relay.set_state('HW', True)
         else:
             msg = 'OFF -'
-            self.relay.set_state('HW', False)
+            relay.set_state('HW', False)
         logging.info('Turning Hot Water %s', msg)
 
     def evaluate_ch(self, previous_period, next_period):
+        import warmpi.relayctrl.client as relay
+        import warmpi.temperature.client as temperature
+
+        relay = relay.LocalClient()
+        temperature = temperature.LocalClient()
         if previous_period is None:
             msg = 'ON  +'
             for zone, setpoint in next_period.temperatures:
-                self.temperature.set_zone_setpoint(zone, setpoint)
-            self.relay.set_state('CH', True)
+                temperature.set_zone_setpoint(zone, setpoint)
+            relay.set_state('CH', True)
         else:
             msg = 'OFF -'
-            self.relay.set_state('CH', False)
+            relay.set_state('CH', False)
         logging.info('Turning Central Heating %s', msg)
 
 

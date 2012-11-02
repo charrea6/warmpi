@@ -1,20 +1,19 @@
 #!/usr/bin/python
 import threading
 import logging
+import os
 
 from warmpi import SubSystem, get_optparse
 from warmpi.relayctrl.client import LocalClient
-from warmpi.temperature import oregon
 from warmpi.temperature.thermostat import Thermostat
 
 class TemperatureSubSystem(SubSystem):
     def __init__(self, user, daemonize):
         self.thermostats = {}
         self.devices = []
-        self.init_lock = threading.Lock()
-        with self.init_lock:
-            super(TemperatureSubSystem, self).__init__('temperature', user, daemonize)
-        self.relay = LocalClient()
+        self.init_lock = None # Created in privileged_init so that it is created after forking when in daemon mode.
+        super(TemperatureSubSystem, self).__init__('temperature', user, daemonize)
+        self.init_lock.release()
         self.create_server({'get_temperatures':self.get_temperatures,
                             'get_thermostats':self.get_thermostats,
                             'get_thermostat_temperature': self.get_thermostat_temperature,
@@ -25,7 +24,15 @@ class TemperatureSubSystem(SubSystem):
                             'set_zone_setpoint' : self.set_zone_setpoint})
 
     def privileged_init(self):
-        self.ems100 = oregon.EMS100(self.sensor_detected)
+        logging.info("Starting priviledged_init")
+        try:
+            from warmpi.temperature import oregon
+            self.init_lock = threading.Lock()
+            self.init_lock.acquire()
+            self.ems100 = oregon.EMS100(self.sensor_detected)
+            logging.info("Created sensor")
+        except:
+            logging.exception("Failed to create sensors")
 
     def setpoint_achieved_changed(self, setpoint):
         heating_required = False
@@ -33,7 +40,9 @@ class TemperatureSubSystem(SubSystem):
             if not ts.setpoint_achieved:
                 heating_required = True
                 break
-        self.relay.set_state('CFH', heating_required)
+
+        relay = LocalClient()
+        relay.set_state('CFH', heating_required)
 
     def sensor_detected(self, sensor):
         logging.info('Sensor detected: %s', sensor.name)
@@ -91,5 +100,4 @@ if __name__ == '__main__':
         subsystem = TemperatureSubSystem(options.user, options.daemon)
         subsystem.run()
     except:
-        import traceback
-        traceback.print_exc()
+        logging.exception("Error")
