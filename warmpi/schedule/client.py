@@ -27,3 +27,6 @@ class LocalClient(object):
 
     def remove_period(self, period_id):
         self.conn.call('remove_period', period_id)
+
+    def get_active_periods(self):
+        return self.conn.call('get_active_periods')
