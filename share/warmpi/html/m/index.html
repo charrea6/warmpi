@@ -1,0 +1,63 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Heating Control</title>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.0/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" href="common.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+    <script src="/jquery.json-2.3.min.js"></script>
+    <script src="/jquery.kontrol.js"></script>
+    <script src="/jquery.thermometer.js"></script>
+    <script src="/common.js"></script>
+
+    <script>
+    $(function() {
+
+        $('a').button();
+
+        function updateInfoStatus(){
+            schedule_GetInfo({success: function(r){
+                    $("#active_program").html(r.active_program);
+                    var active_periods = '<table>';
+                    for (i = 0; i < r.active_periods.length; i ++){
+                        var p = r.active_periods[i];
+                        active_periods += '<tr><td>' + p.start + '</td><td>-</td><td>' + p.end +'</td><td>' + p.system +'</td></tr>'
+                    }
+                    active_periods += '</table>'
+                    $('#active_periods').html(active_periods);
+                }});
+            status_GetInfo({success: function(r){
+                    $('#status_date').html(r.datetime);
+                    $('#status_uptime').html(r.uptime);
+                    $('#status_loadavg').html(r.load_average[0] + ' ' + r.load_average[1] + ' ' + r.load_average[2]);
+                    setTimeout(updateInfoStatus, 60000);
+                },
+                failure: function(){
+                    setTimeout(updateInfoStatus, 60000);
+                }});
+        }
+
+        updateInfoStatus();
+    });
+    </script>
+
+</head>
+<body>
+    <div class="title"><h1>Status</h1></div>
+    <div class="content">
+    <table>
+        <tr><td>Date:</td><td id="status_date"></td></tr>
+        <tr><td>Uptime:</td><td id="status_uptime"></td></tr>
+        <tr><td>Load Average:</td><td id="status_loadavg"></td></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+        <tr><td>Active Program:</td><td id="active_program"></td></tr>
+        <tr><td>Active Periods:</td><td id="active_periods"></td></tr>
+    </table>
+    </div>
+    <div class="footer">
+    <a href="thermostat.html">Heating</a>
+    <a href="override.html">Override</a>
+    </div>
+</body>
+</html>

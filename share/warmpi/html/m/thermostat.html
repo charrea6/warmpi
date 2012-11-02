@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Thermostats</title>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.0/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" href="common.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+    <script src="/jquery.json-2.3.min.js"></script>
+    <script src="/jquery.kontrol.js"></script>
+    <script src="/jquery.thermometer.js"></script>
+    <script src="/common.js"></script>
+    <script>
+        $(function() {
+            var thermostat_timer = null;
+
+            thermostat_GetAllThermostats({success:function(r){
+                var zones = new Array();
+                for (t in r){
+                    if (zones.indexOf(r[t].zone) == -1){
+                        zones.push(r[t].zone);
+                    }
+                }
+                for (var i =0; i < zones.length; i ++){
+                    $("#thermostat_select").append('<option value="zone:' + zones[i] + '">Zone : ' + zones[i] + '</option>');
+                }
+
+                for (t in r){
+                    $("#thermostat_select").append('<option value="' + t + '">' + t + '</option>');
+                }
+            }});
+
+            $("#thermostat_select").change(function(){
+                if (thermostat_timer != null) {
+                    clearTimeout(thermostat_timer);
+                    thermostat = $("#thermostat_select").val();
+                    value = $('#thermostat-dial').val();
+                    thermostat_SetThermostatProp(thermostat, 'setpoint', value);
+                }
+                var thermostat = $(this).val()
+                if (thermostat.match(/^zone:/)){
+                    $("#thermostat_temp").text('--.-');
+                }else{
+                    $("#thermostat_temp").text('20.0');
+                }
+            });
+
+            $("#thermostat-dial").attr({'data-width': $(document.body).width(),
+                                        'data-height': $(document.body).width()});
+
+            $("#thermostat-dial").dial({change: function(value){
+                if (value < 10){
+                    this.fgColor = '#87CEEB';
+                    this.o.fgColor = '#87CEEB';
+                }else if (value <20){
+                    this.fgColor = 'yellow';
+                    this.o.fgColor = 'yellow';
+                }else{
+                    this.fgColor = 'red';
+                    this.o.fgColor = 'red';
+                }
+                thermostat = $("#thermostat_select").val();
+                thermostat_timer = setTimeout(function(){
+                    thermostat_SetThermostatProp(thermostat, 'setpoint', value);
+                    thermostat_timer = null;
+                }, 100);
+            }});
+
+        });
+        </script>
+</head>
+<body>
+<div class="title"><h1>Thermostats</h1></div>
+<div class="content">
+<table style="width: 100%;">
+    <tr><td><select style="width: 100%" id="thermostat_select">
+    </select>
+    </td></tr>
+    <tr><td>Current Temperature:<span id="thermostat_temp">--.-</span>&deg;C
+    </td></tr>
+    <tr><td>
+        <input id="thermostat-dial" data-width="240" data-height="240" data-angleOffset="-60" data-angleArc="120" data-min="0" data-max="40" value="20"></input>
+    </td></tr>
+</table>
+</div>
+</body>
+</html>

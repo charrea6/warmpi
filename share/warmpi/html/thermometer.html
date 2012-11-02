@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http - equiv = "content-type"content = "text/html; charset=UTF-8">
+<title> Thermometer Example </title>
+
+  <!-- <script type='text/javascript' src='http://code.jquery.com/jquery-1.5.2.js'></script> -->
+  <script type='text/javascript' src='thermometer.js'></script>
+<link rel = "stylesheet"type = "text/css"href = "/css/normalize.css">
+<link rel = "stylesheet"type = "text/css"href = "/css/result-light.css">
+</head>
+<body>
+  <div> Example non-jQuery Thermometer Gauges </div>
+<div>
+    <canvas id="demo" height="450" width="400"></canvas><div style="clear:both"></div>
+    <input id="fillTo" value="20" /><button id ='fillToButton'>Redraw Gauge</button>
+</div>
+
+<div>
+    <canvas id="demo2" height="250" width="250"></canvas><div style="clear:both"></div>
+    <input id="fillTo2" value="9.65" /><button id ='fillToButton2'>Redraw Gauge</button>
+</div>
+
+
+<script type='text/javascript'>//<![CDATA[
+
+    var w = document.getElementById('demo').width;
+    var h = document.getElementById('demo').height;
+
+    var g = new ThermometerGuage(document.getElementById('demo'), {
+        w: w,
+        h: h,
+        color: {
+            label: 'rgba(255, 255, 255, .6)',
+            tickLabel: 'rgba(255, 0, 0, 0.4)'
+        },
+        centerTicks: false,
+        majorTicks: 5,
+        minorTicks: 1,
+        max: 40,
+        min: 0,
+        scaleTickLabelText: 1.15,
+        scaleLabelText: 0.9,
+        scaleTickWidth: 1.5,
+        unitsLabel: " &deg;C"
+    });
+    var f = document.getElementById("fillTo").value;
+
+    g.setValue(f);
+
+    var w = document.getElementById('demo2').width;
+    var h = document.getElementById('demo2').height;
+
+    var g2 = new ThermometerGuage(document.getElementById('demo2'), {
+        scaleLabelText: 0.9,
+        unitsLabel: " pH",
+        color: {
+            label: 'rgba(55, 255, 255, 1)',
+        },
+        max: 12,
+        min: 4
+        //color: {
+        //    fill: "rgba(0,255,0,1)",
+        //    label:'#999'
+        //},
+        //bulbRadiusByHeight: true
+    });
+    var f2 = document.getElementById("fillTo2").value;
+
+    g2.setValue(f2);
+
+</script>
+
+</body>
+</html>
+

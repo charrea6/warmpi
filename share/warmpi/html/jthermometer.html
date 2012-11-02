@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http - equiv = "content-type"content = "text/html; charset=UTF-8">
+<title> Thermometer Example </title>
+
+  <script type='text/javascript' src='http://code.jquery.com/jquery-1.5.2.js'></script>
+  <script type='text/javascript' src='jquery.thermometer.js'></script>
+<link rel = "stylesheet"type = "text/css"href = "/css/normalize.css">
+<link rel = "stylesheet"type = "text/css"href = "/css/result-light.css">
+
+<style type = 'text/css'>
+
+
+</style>
+
+
+
+
+<script type='text/javascript'>//<![CDATA[
+$(window).load(function(){
+//Sample to create a thermometer
+//var _ = {
+//    bulbRadius: 20
+//}
+$(function() {
+    //ctx = $('#demo')[0].getContext('2d');
+    var w = $('#demo').width();
+    var h = $('#demo').height();
+
+    $('#demo').thermometer({
+        w: w,
+        h: h,
+        color: {
+            label: 'rgba(255, 255, 255, 1)',
+            tickLabel: 'rgba(255, 0, 0, 0.4)'
+        },
+        centerTicks: false,
+        majorTicks: 3,
+        minorTicks: 4,
+        max: 100,
+        min:25,
+        scaleTickLabelText: 1.15,
+        scaleLabelText: 0.9,
+        scaleTickWidth: 1.5,
+        unitsLabel: " lbs"
+    });
+
+
+    //g.drawThermometerContainer();
+    //_.ctx = ctx;
+    //_.w = w;
+    //_.h = h;
+    $('#demo').thermometer('setValue',$('#fillTo').val());
+    //g.redrawFill();
+    $('#fillToButton').click(function() {
+        //g.clearCanvas();
+        //g.drawThermometerContainer();
+        $('#demo').thermometer('setValue',$('#fillTo').val());
+        //g.redrawFill();
+    });
+    $('#fillTo').change(function() {
+        //g.clearCanvas();
+        //g.drawThermometerContainer();
+        $('#demo').thermometer('setValue',$('#fillTo').val());
+        //g.redrawFill();
+    });
+
+});
+
+
+$(function() {
+    //ctx = $('#demo')[0].getContext('2d');
+    var w = $('#demo2').width();
+    var h = $('#demo2').height();
+
+    $('#demo2').thermometer({
+        scaleLabelText: 0.9,
+        unitsLabel: " pH",
+        color: {
+            label: 'rgba(55, 255, 255, 1)',
+        },
+        max: 12,
+        min: 4
+        //color: {
+        //    fill: "rgba(0,255,0,1)",
+        //    label:'#999'
+        //},
+        //bulbRadiusByHeight: true
+    });
+
+
+    //g2.drawThermometerContainer();
+    //_.ctx = ctx;
+    //_.w = w;
+    //_.h = h;
+    $('#demo2').thermometer('setValue',$('#fillTo2').val());
+    //g2.redrawFill();
+    $('#fillToButton2').click(function() {
+        //g2.clearCanvas();
+        //g2.drawThermometerContainer();
+        $('#demo2').thermometer('setValue',$('#fillTo2').val());
+        //g2.redrawFill();
+    });
+
+    $('#fillTo2').change(function() {
+        //g.clearCanvas();
+        //g.drawThermometerContainer();
+        $('#demo2').thermometer('setValue',$('#fillTo2').val());
+        //g.redrawFill();
+    });
+
+
+});
+
+
+
+
+
+
+
+function test() {
+    console.log("demo");
+    alert("test");
+}
+});//]]>
+
+</script>
+
+
+</head>
+<body>
+  <div>Example jQuery Thermometer Gauges</div>
+<div>
+    <canvas id="demo" height="450" width="400"></canvas><div style="clear:both"></div>
+    <input id="fillTo" value="55.69" /><button id ='fillToButton'>Redraw Gauge</button>
+</div>
+
+<div>
+    <canvas id="demo2" height="250" width="250"></canvas><div style="clear:both"></div>
+    <input id="fillTo2" value="8.12" /><button id ='fillToButton2'>Redraw Gauge</button>
+</div>
+
+
+
+</body>
+
+
+</html>
+

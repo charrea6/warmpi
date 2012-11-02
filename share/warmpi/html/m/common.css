@@ -1,0 +1,11 @@
+div.title, div.content, div.footer {
+    border: 2px solid black;
+    border-radius: 12px 12px;
+    padding: 6px;
+    margin-top: 3px;
+    margin-bottom: 3px;
+}
+
+h1 {
+   margin: 0px;
+}

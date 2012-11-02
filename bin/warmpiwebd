@@ -1,0 +1,178 @@
+#!/usr/bin/python
+import datetime
+import os
+import re
+import sys
+
+import cherrypy
+
+import warmpi
+from warmpi.web import is_mobile
+
+
+# GET /api/relay/name - State
+# POST /api/relay/name {on:False/True}
+#
+# GET /api/thermostat/ - all thermostat info
+# GET /api/thermostat/name/ - Single thermostat info
+# GET /api/thermostat/name/zone - Single thermostat zone
+# GET /api/thermostat/name/setpoint - Single thermostat setpoint
+# GET /api/thermostat/name/temperature - Single thermostat setpoint
+#
+# POST /api/thermostat/ {zone:'', setpoint:0.0}
+# POST /api/thermostat/name/zone {name:''}
+# POST /api/thermostat/name/setpoint {value: 0.0}
+
+class Root(object):
+    @cherrypy.expose
+    def index(self):
+        if is_mobile(cherrypy.request.headers["User-Agent"]):
+            raise cherrypy.HTTPRedirect('/m/index.html')
+        raise cherrypy.HTTPRedirect('/d/index.html')
+
+
+class Api(object):
+    def __init__(self):
+        self.relay = Relay()
+        self.thermostat = Thermostat()
+        self.schedule = Schedule()
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def info(self):
+        with open('/proc/uptime') as f:
+            uptime_seconds = float(f.readline().split()[0])
+            uptime_string = str(datetime.timedelta(seconds = uptime_seconds))
+        return {'uptime':uptime_string, 'load_average':os.getloadavg(), 'datetime':datetime.datetime.now().ctime()}
+
+    @cherrypy.expose
+    def index(self):
+        return "This path is used for the JSON API"
+
+
+class Relay(object):
+    relays = ('HW', 'CH', 'CFH')
+    def __init__(self):
+        self.state = {}
+        for r in self.relays:
+            self.state[r] = False
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def index(self):
+        return self.state
+
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def default(self, relay):
+        if relay not in self.relays:
+            raise cherrypy.NotFound()
+        if cherrypy.request.method == 'POST':
+            self.state[relay] = bool(cherrypy.request.json['active'])
+        return {'active':self.state[relay]}
+
+
+class Thermostat(object):
+    def __init__(self):
+        self.thermostats = {'Main':{ 'zone':'Upstairs', 'temperature':25.0, 'setpoint':24.0},
+                            'Remote 1':{'zone':'Downstairs', 'temperature':19.0, 'setpoint':20.0}}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def index(self):
+        if cherrypy.request.method == 'GET':
+            return self.thermostats
+        elif cherrypy.request.method == 'POST':
+            for thermostat in self.thermostats.values():
+                if thermostat[1] == cherrypy.request.json['zone']:
+                    thermostat[2] = cherrypy.request.json['setpoint']
+            return self.thermostats
+        raise cherrypy.HTTPError(403)
+
+    @cherrypy.expose
+    @cherrypy.tools.json_in()
+    @cherrypy.tools.json_out()
+    def default(self, *args):
+        if len(args) >= 1 and args[0] in self.thermostats:
+            thermostat = self.thermostats[args[0]]
+
+            if len(args) == 1:
+                if cherrypy.request.method == 'GET':
+                    return thermostat
+                raise cherrypy.HTTPError(403)
+
+            elif len(args) == 2:
+                handler = getattr(self, 'thermostat_' + args[1], None)
+                if handler is not None:
+                    return handler(thermostat)
+
+        raise cherrypy.NotFound()
+
+    def thermostat_zone(self, thermostat):
+        if cherrypy.request.method == 'GET':
+            return {'zone':thermostat['zone']}
+        elif cherrypy.request.method == 'POST':
+            theromstat['zone'] = cherrypy.request.json['zone']
+            return {'zone':thermostat[0]}
+        raise cherrypy.HTTPError(403)
+
+    def thermostat_temperature(self, thermostat):
+        if cherrypy.request.method == 'GET':
+            return thermostat['temperature']
+        raise cherrypy.HTTPError(403)
+
+    def thermostat_setpoint(self, thermostat):
+        if cherrypy.request.method == 'GET':
+            return {'setpoint':thermostat['setpoint']}
+
+        elif cherrypy.request.method == 'POST':
+            thermostat[2] = cherrypy.request.json['setpoint']
+            return {'setpoint':thermostat['setpoint']}
+        raise cherrypy.HTTPError(403)
+
+
+class Schedule(object):
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def index(self):
+        return {'active_program':'Winter', 'active_periods':[
+            {'start':'17:00', 'end':'23:00', 'system':'CH'},
+            {'start':'17:00', 'end':'21:00', 'system':'HW'}
+        ]}
+
+    @cherrypy.expose
+    @cherrypy.tools.json_out()
+    def default(self, *args):
+        return ()
+
+
+if __name__ == '__main__':
+    parser = warmpi.get_optparse()
+    options,args = parser.parse_args()
+
+    bin_dir = os.path.dirname(os.path.abspath(__file__))
+    prefix_dir = os.path.split(bin_dir)[0]
+    html_dir = os.path.join(prefix_dir, 'share', 'warmpi', 'html')
+
+    root = Root()
+    root.api = Api()
+
+    if options.daemon:
+        from cherrypy.process.plugins import Daemonizer, DropPrivileges
+        daemon = Daemonizer(cherrypy.engine)
+        daemon.subscribe()
+        if os.getuid() == 0:
+            import pwd
+            p = pwd.getpwnam(options.user)
+            drop_priv = DropPrivileges(cherrypy.engine, uid=p.pw_uid, gid=p.pw_gid)
+            drop_priv.subscribe()
+
+    if os.getuid() == 0:
+        cherrypy.server.socket_port = 80
+
+    cherrypy.server.socket_host = '0.0.0.0'
+    conf = { '/' : { 'tools.staticdir.on': True,
+                     'tools.staticdir.dir' : html_dir}}
+    cherrypy.quickstart(root, config=conf)

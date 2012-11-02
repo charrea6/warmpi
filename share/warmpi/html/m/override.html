@@ -1,0 +1,56 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Override</title>
+    <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.0/themes/base/jquery-ui.css" />
+    <link rel="stylesheet" href="common.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+    <script src="/jquery.json-2.3.min.js"></script>
+    <script src="/jquery.kontrol.js"></script>
+    <script src="/jquery.thermometer.js"></script>
+    <script src="/common.js"></script>
+    <script>
+        $(function() {
+
+            $('[id*="relay_"]').button().click(function(){
+                relay_SetState($(this).attr("relay"), this.checked);
+            });
+
+            function updateRelayStates() {
+                relay_GetAllStates({success: function(r){
+                    $('[id*="relay_"]').each(function(index){
+                        $(this).prop("checked", r[$(this).attr('relay')]).change();
+                    });
+                    setTimeout(updateRelayStates, 1000);
+                },
+                    failure: function(){
+                        setTimeout(updateRelayStates, 1000);
+                    }});
+            };
+
+            updateRelayStates();
+        });
+    </script>
+
+</head>
+<body>
+<div class="title">
+<h1>Override</h1>
+</div>
+<div class="content">
+<table>
+    <tr>
+        <td style="width: 200px">
+            <input type="checkbox" id="relay_hw" relay="HW"></input><label for="relay_hw">Hot Water</label>
+        </td>
+        <td style="width: 200px">
+            <input type="checkbox" id="relay_ch" relay="CH"></input><label for="relay_ch">Heating</label>
+        </td>
+    </tr>
+</table>
+</div>
+</body>
+</html>
