@@ -65,12 +65,12 @@ else:
 client = LocalClient()
 
 if cmd == 'temps':
-    temps = client.get_temperatures().items()
+    temps = client.get_thermostats().items()
     temps.sort(lambda x,y: cmp(x[0], y[0]))
-    for thermostat,(zone, temp) in temps:
+    for thermostat,(zone, temp, setpoint) in temps:
         print '%s(%s) : %.2f' % (thermostat, zone, temp)
 elif cmd == 'ls':
-    thermostats = client.get_thermostats()
+    thermostats = client.get_thermostats().keys()
     thermostats.sort()
     for thermostat in thermostats:
         print '%s' % thermostat

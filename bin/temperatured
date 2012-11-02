@@ -14,13 +14,12 @@ class TemperatureSubSystem(SubSystem):
         self.init_lock = None # Created in privileged_init so that it is created after forking when in daemon mode.
         super(TemperatureSubSystem, self).__init__('temperature', user, daemonize)
         self.init_lock.release()
-        self.create_server({'get_temperatures':self.get_temperatures,
-                            'get_thermostats':self.get_thermostats,
+        self.create_server({'get_thermostats':self.get_thermostats,
                             'get_thermostat_temperature': self.get_thermostat_temperature,
                             'set_thermostat_zone' : self.set_thermostat_zone,
                             'get_thermostat_zone' : self.get_thermostat_zone,
                             'set_thermostat_setpoint': self.set_thermostat_setpoint,
-                            'get_thermostat_setpoint': self.get_thermostat_setpoint,
+                            'get_thermostat_getpoint': self.get_thermostat_getpoint,
                             'set_zone_setpoint' : self.set_zone_setpoint})
 
     def privileged_init(self):
@@ -63,15 +62,12 @@ class TemperatureSubSystem(SubSystem):
         super(TemperatureSubSystem, self).after_stop()
 
 
-    def get_temperatures(self):
+    def get_thermostats(self):
         result = {}
         for name, ts in self.thermostats.items():
-            result[name] = (ts.zone, ts.temperature)
+            result[name] = (ts.zone, ts.temperature, ts.setpoint)
         return result
-        
-    def get_thermostats(self):
-        return self.thermostats.keys()
-        
+
     def get_thermostat_temperature(self, thermostat):
         return self.thermostats[thermostat].temperature
         
@@ -84,7 +80,7 @@ class TemperatureSubSystem(SubSystem):
     def set_thermostat_setpoint(self, thermostat, setpoint):
         self.thermostats[thermostat].setpoint = float(setpoint)
     
-    def get_thermostat_setpoint(self, thermostat):
+    def get_thermostat_getpoint(self, thermostat):
         return self.thermostats[thermostat].setpoint
 
     def set_zone_setpoint(self, zone, setpoint):
