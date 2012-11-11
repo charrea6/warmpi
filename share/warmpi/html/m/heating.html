@@ -1,0 +1,148 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>Heating</title>
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.2.0/jquery.mobile-1.2.0.min.js"></script>
+    <script src="/jquery.json-2.3.min.js"></script>
+    <script src="/jquery.thermometer.js"></script>
+    <script src="/common.js"></script>
+
+    <script>
+        $(function() {
+            var temperatureTimer = null;
+            var relayTimer = null;
+
+            var currentTemps;
+
+            function setTemperature(){
+                var currentSelection = $('#thermostat_select').val();
+                for (thermostat in currentTemps){
+                    if (thermostat == currentSelection){
+                        $('#thermometer').thermometer('setValue', currentTemps[thermostat].temperature);
+                    }
+                }
+            }
+            function updateTemperature(){
+                thermostat_GetAllThermostats({
+                    success:function(r){
+                        /* Process r */
+                        currentTemps = r;
+                        setTemperature();
+                        temperatureTimer = setTimeout(updateTemperature, 60000);
+                    },
+                    failure:function(){
+                        temperatureTimer = setTimeout(updateTemperature, 60000);
+                    }
+                });
+            }
+
+            function updateRelayState(){
+                relay_GetState('CH', {
+                    success:function(r){
+                        if (r.active){
+                            $('#heating-slider').val('on');
+                        }else{
+                            $('#heating-slider').val('off');
+                        }
+                        $('#heating-slider').slider('refresh');
+                        relayTimer = setTimeout(updateRelayState, 1000);
+                    },
+                    failure:function(){
+                        relayTimer = setTimeout(updateRelayState, 1000);
+                    }
+                })
+            }
+            $('#heating-slider').change(function(){
+                    var v = $('#heating-slider').val() == 'on';
+                    relay_SetState('CH', v, {});
+                });
+
+            thermostat_GetAllThermostats({success:function(r){
+                currentTemps = r;
+                temperatureTimer = setTimeout(updateTemperature, 60000);
+                var zones = new Array();
+                for (t in r){
+                    if (t.zone && (zones.indexOf(r[t].zone) == -1)){
+                        zones.push(r[t].zone);
+                    }
+                }
+                var selectOption = undefined;
+                for (var i =0; i < zones.length; i ++){
+                    if (selectOption === undefined){
+                        selectOption = 'zone:' + zones[i];
+                    }
+                    $("#thermostat_select").append('<option value="zone:' + zones[i] + '">Zone : ' + zones[i] + '</option>');
+                }
+
+                for (t in r){
+                    if (selectOption === undefined){
+                        selectOption = t;
+                    }
+                    $("#thermostat_select").append('<option value="' + t + '">' + t + '</option>');
+                }
+                $("#thermostat_select").val(selectOption).selectmenu('refresh');
+                setTemperature();
+            }});
+
+            $("#thermostat_select").change(function(){
+                var thermostat = $(this).val()
+                if (thermostat.match(/^zone:/)){
+
+                }else{
+
+                }
+                setTemperature();
+            });
+
+            var w = $('#thermometer').width();
+            var h = $('#thermometer').height();
+            console.log('W = ' + w + ' H = ' + h);
+            $('#thermometer').thermometer({
+                w: w,
+                h: h,
+                color: {
+                    label: 'rgba(255, 255, 255, 1)',
+                    tickLabel: 'rgba(255, 0, 0, 0.4)'
+                },
+                centerTicks: false,
+                majorTicks: 3,
+                minorTicks: 4,
+                max: 40,
+                min: -10,
+                scaleTickLabelText: 1.15,
+                scaleLabelText: 0.9,
+                scaleTickWidth: 1.5,
+                unitsLabel: "\xB0C"
+            });
+            $('#thermometer').thermometer('setValue',0);
+            updateRelayState();
+        });
+    </script>
+
+</head>
+<body>
+<div data-role="page">
+    <div data-role="header"><a href="index.html">Home</a><h3>Heating</h3></div>
+    <div data-role="content">
+        <div data-role="fieldcontain">
+            <label for="heating-slider">Heating:</label>
+            <select name="heating-slider" id="heating-slider" data-role="slider">
+                <option value="off">Off</option>
+                <option value="on">On</option>
+            </select>
+        </div>
+        <select id="thermostat_select"></select>
+        <div>
+            <canvas id="thermometer" height="300" width="400"></canvas>
+            <label for="setpoint">Setpoint</label>
+            <input type="range" name="setpoint" id="setpoint" value="20" min="0" max="40" data-highlight="true" />
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -326,7 +326,7 @@ function ThermometerGuage(canvas, options) {
 
         that.ctx.save();
         // value text
-        valueText = formatNum(valueText, 3);
+        valueText = formatNum(valueText, 0);
         styleText(that.ctx, fontSize.toFixed(0) * that.settings.scaleTickLabelText + 'px sans-serif');
         metrics = measureText(that.ctx, valueText);
 
