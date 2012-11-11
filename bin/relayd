@@ -8,13 +8,15 @@ from warmpi import SubSystem, get_optparse
 
 class RelaySubSystem(SubSystem):
     def __init__(self, user, daemonize):
-        self.relays = {'HW':Relay(4), 'CH':Relay(17), 'CFH':Relay(21)}
         super(RelaySubSystem, self).__init__('relay', user, daemonize)
         from warmpi.relayctrl.upnp import RelayDevice
         self.device = RelayDevice(self.relays)
         self.device.start()
         self.reactor.add_after_stop_func(self.device.stop)
         self.create_server({'get_state':self.get_state, 'set_state':self.set_state})
+
+    def privileged_init(self):
+        self.relays = {'HW':Relay(4), 'CH':Relay(17), 'CFH':Relay(21)}
 
     def get_state(self, relay):
         return self.relays[relay].state
