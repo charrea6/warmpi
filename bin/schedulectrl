@@ -1,0 +1,121 @@
+#!/usr/bin/python
+import sys
+import datetime
+
+from warmpi import command
+from warmpi.schedule.client import LocalClient
+from warmpi.schedule.program import Program, Period
+
+commands = []
+
+def print_period(period):
+    temperatures = ''
+    for temp,zone in period.temperatures:
+        if temperatures:
+            temperatures += ','
+        temperatures += '%s=%.2f' % (zone, temp / 100.0)
+    days = ['-'] * 7
+    for day in period.days:
+        days[day] = Period.DAYS[day][0]
+    days = reduce(lambda x,y: x+y, days, '')
+    print '%s : %s  %s %s -> %s %s' % (period.id, period.system, days, period.start, period.end, temperatures)
+
+def parse_time(s):
+    a = s.split(':',1)
+    return datetime.time(int(a[0]), int(a[1]))
+
+@command.define_command(commands, 'system', 'system <name> [enable|disable]\nSet/Get whether the specified system is active.')
+def system_active(options, args):
+    if len(args) > 1:
+        enable_arg = args[1].lower()
+        if enable_arg == 'enable':
+            active = True 
+        elif enable_arg == 'disable':
+            active = False
+        else:
+            print 'Unknown option "%s"'  % args[1]
+            sys.exit(1)
+        LocalClient().set_system_active(args[0], active)
+    elif len(args) == 1:
+        print LocalClient().get_system_active(args[0])
+    else:
+        print 'No system specified'
+
+@command.define_command(commands, 'programs', 'programs\nList all available programs.', )
+def get_programs(options, args):
+    for pid, name, active in LocalClient().get_programs():
+        print '%s %s : %s' % (active and '*' or ' ', pid, name)
+
+@command.define_command(commands, 'program', 'program <id>\nGet details on specified program.')
+def get_program(options, args):
+    if len(args) < 1:
+        print 'A program id is required.'
+        sys.exit(1)
+    program = LocalClient().get_program(args[0])
+    print '%s %s : %s' % (program.active and '*' or ' ', program.id, program.name)
+    print
+    periods = program.periods.values()
+    periods.sort(lambda x,y: cmp(x.id, y.id))
+    for period in periods:
+        print_period(period)
+
+
+@command.define_command(commands, 'active', 'active [<program id>]\nGet/Set active program.')
+def active_program(options, args):
+    if len(args) == 0:
+        print 'Active Program Id:',LocalClient().get_active_program().id
+    else:
+        LocalClient().set_active_program(args[0])
+
+@command.define_command(commands, 'rmprog', 'rmprog <program id>\nRemove the specified program.')
+def remove_program(options, args):
+    if len(args) < 1:
+        print 'A program id is required to remove it.'
+        sys.exit(1)
+    LocalClient().remove_program(args[0])
+
+@command.define_command(commands, 'addprog', 'addprog <name>\nCreate a new program using the name specified.')
+def add_program(options, args):
+    if len(args) < 1:
+        print 'A name for the new program is required.'
+        sys.exit(1)
+    print 'Program Id:', LocalClient().add_program(Program(args[0])).id
+
+@command.define_command(commands, 'addperiod', '''addperiod <program id> <system> <day[,day...]> <start> <end> [<zone=temp>[,<zone=temp>...]]
+Create a new period in the program specified using the start and end times supplied. The days this period is valid for a
+specified as a comma separated list of 0=Monday - 6=Sunday
+Additionally zone termperatures can be specified as comma seperated string of <zone>=<temperature> definitions.''')
+def add_period(options, args):
+    if len(args) < 5:
+        print 'Usage: <program id> <system> <day[,day...]> <start> <end> [<zone=temp>[,<zone=temp>...]]'
+        sys.exit(1)
+    pid = args[0]
+    system = args[1]
+    days = [int(d) for d in args[2].split(',')]
+    start = parse_time(args[3])
+    end =  parse_time(args[4])
+    temperatures = []
+    if len(args)> 5:
+        for zt in args[5].split(','):
+            zone, temp = zt.split('=', 1)
+            temp = int(float(temp) * 100)
+            temperatures.append((temp, zone))
+    period = Period(system, days, start, end, temperatures)
+    print 'Period Id:', LocalClient().add_period(pid, period).id
+
+
+@command.define_command(commands, 'rmperiod', 'rmperiod <period id>\nRemove the specified period.')
+def remove_period(options, args):
+    if len(args) < 1:
+        print 'A period id is required to remove it.'
+        sys.exit(1)
+    LocalClient().remove_period(args[0])
+
+
+@command.define_command(commands, 'activeperiods', 'activeperiods\nList the currently active periods.')
+def get_active_periods(options, args):
+    for p in LocalClient().get_active_periods():
+        print_period(p)
+
+if __name__ == '__main__':
+    command.dispatch(commands, sys.argv[1:])

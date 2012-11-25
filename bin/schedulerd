@@ -9,12 +9,71 @@ from warmpi.schedule.program import Programs, Period
 def total_seconds(td):
     return (td.microseconds / 10.0**6) + (td.seconds + td.days * 24 * 3600)
 
+class System(object):
+    def __init__(self):
+        self.active = True
+        self.period = None
+
+    def evaluate(self, period):
+        self.period = period
+        if self.active:
+            if self.period:
+                logging.info('Turning %s ON', self.name)
+                self.activate()
+            else:
+                logging.info('Turning %s OFF', self.name)
+                self.deactivate()
+
+    def set_active(self, active):
+        if self.active != active:
+            self.active = active
+            if active:
+                logging.info('Activating %s', self.name)
+                self.activate()
+            else:
+                logging.info('Deactivating %s', self.name)
+                self.deactivate()
+
+    def get_relay_client(self):
+        import warmpi.relayctrl.client as relay
+        return relay.LocalClient()
+
+
+class HWSystem(System):
+    name = 'Hot Water'
+
+    def activate(self):
+        relay = self.get_relay_client()
+        relay.set_state('HW', True)
+
+    def deactivate(self):
+        relay = self.get_relay_client()
+        relay.set_state('HW', False)
+
+
+class CHSystem(System):
+    name = 'Central Heating'
+
+    def activate(self):
+        import warmpi.temperature.client as temperature
+        relay = self.get_relay_client()
+        temperature = temperature.LocalClient()
+        for zone, setpoint in self.period.temperatures:
+            temperature.set_zone_setpoint(zone, setpoint)
+        relay.set_state('CH', True)
+
+    def deactivate(self):
+        relay = self.get_relay_client()
+        relay.set_state('CH', False)
+
+
 class SchedulerSubSystem(SubSystem):
     def __init__(self, user, daemon):
         super(SchedulerSubSystem, self).__init__('scheduler', user, daemon)
         self.current_periods = {}
         self.active_periods = {}
         self.timer = None
+        self.systems = {'HW': HWSystem(), 'CH': CHSystem()}
         self.programs = Programs(os.path.join(self.dir, 'programs.xml'), self.programs_updated)
 
         from warmpi.schedule.upnp import HeatingController
@@ -22,13 +81,15 @@ class SchedulerSubSystem(SubSystem):
         self.device.start()
         self.create_server({'get_active_program':lambda : self.programs.active_program,
                             'set_active_program':self.programs.set_active_program,
-                            'get_programs':self.programs.programs.keys,
+                            'get_programs':self.get_programs,
                             'get_program':lambda program_id: self.programs.programs[program_id],
                             'add_program':self.programs.add_program,
                             'remove_program':self.programs.remove_program,
                             'add_period':self.programs.add_period,
                             'remove_period':self.programs.remove_period,
-                            'get_active_periods':lambda : self.active_periods.items()})
+                            'get_active_periods':lambda : self.active_periods.values(),
+                            'get_system_active': lambda s: self.systems[s].active,
+                            'set_system_active': lambda s, active: self.systems[s].set_active(active)})
 
     def after_stop(self):
         self.device.stop()
@@ -55,7 +116,6 @@ class SchedulerSubSystem(SubSystem):
         self.evaluate_periods()
 
     def evaluate_periods(self):
-        systems = {'HW': self.evaluate_hw, 'CH':self.evaluate_ch}
         new_periods = {}
         now = datetime.datetime.now()
         now_time = now.time()
@@ -70,12 +130,12 @@ class SchedulerSubSystem(SubSystem):
                     if now_time < period.start and period.start < next_start_stop:
                         next_start_stop = period.start
 
-        for system,evaluate in systems.items():
-            active = self.active_periods.get(system, None)
-            next = new_periods.get(system, None)
+        for name,system in self.systems.items():
+            active = self.active_periods.get(name, None)
+            next = new_periods.get(name, None)
             if active != next:
                 try:
-                    evaluate(active, next)
+                    system.evaluate(next)
                 except:
                     logging.error('Exception while evaluating system.', exc_info=True)
         self.active_periods = new_periods
@@ -94,42 +154,20 @@ class SchedulerSubSystem(SubSystem):
 
     def __sleep_again(self):
         if self.timer is not None:
-            reactor.rem_timer(self.timer)
+            self.reactor.rem_timer(self.timer)
 
         dt_util, cb = self.__sleep_info
         diff = total_seconds(dt_util - datetime.datetime.now())
         if diff > 60.0:
-            self.timer = reactor.add_timer(diff / 2.0, self.__sleep_again)
+            self.timer = self.reactor.add_timer(diff / 2.0, self.__sleep_again)
         else:
-            self.timer = reactor.add_timer(diff, cb)
-        
-    def evaluate_hw(self, previous_period, next_period):
-        import warmpi.relayctrl.client as relay
+            self.timer = self.reactor.add_timer(diff, cb)
 
-        relay = relay.LocalClient()
-        if previous_period is None:
-            msg = 'ON  +'
-            relay.set_state('HW', True)
-        else:
-            msg = 'OFF -'
-            relay.set_state('HW', False)
-        logging.info('Turning Hot Water %s', msg)
-
-    def evaluate_ch(self, previous_period, next_period):
-        import warmpi.relayctrl.client as relay
-        import warmpi.temperature.client as temperature
-
-        relay = relay.LocalClient()
-        temperature = temperature.LocalClient()
-        if previous_period is None:
-            msg = 'ON  +'
-            for zone, setpoint in next_period.temperatures:
-                temperature.set_zone_setpoint(zone, setpoint)
-            relay.set_state('CH', True)
-        else:
-            msg = 'OFF -'
-            relay.set_state('CH', False)
-        logging.info('Turning Central Heating %s', msg)
+    def get_programs(self):
+        programs = []
+        for pid,prog in self.programs.programs.items():
+            programs.append((pid, prog.name, prog.active))
+        return programs
 
 
 if __name__ == '__main__':

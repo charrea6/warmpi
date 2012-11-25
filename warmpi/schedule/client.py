@@ -2,7 +2,7 @@ import warmpi
 
 class LocalClient(object):
     def __init__(self):
-        self.conn = warmpi.get_client('schedule')
+        self.conn = warmpi.get_client('scheduler')
 
     def get_programs(self):
         return self.conn.call('get_programs')
@@ -30,3 +30,9 @@ class LocalClient(object):
 
     def get_active_periods(self):
         return self.conn.call('get_active_periods')
+
+    def get_system_active(self, system):
+        return self.conn.call('get_system_active', system)
+
+    def set_system_active(self, system, active):
+        self.conn.call('set_system_active', system, active)

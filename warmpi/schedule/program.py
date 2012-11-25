@@ -45,6 +45,7 @@ class Programs(object):
 
         self.programs[program.id] = program
         self.__save('add-program', program)
+        return program
 
     def remove_program(self, program_id):
         if self.active_program and self.active_program == program_id:
@@ -55,13 +56,12 @@ class Programs(object):
     def add_period(self, program_id, period):
         self.programs[program_id].add_period(period)
         self.__save('add-period', period)
-        return self.active_program and self.active_program == program_id
+        return period
 
     def remove_period(self, period_id):
         program_id,_ = period_id.split(':')
         self.programs[program_id].remove_period(period_id)
         self.__save('remove-period', period_id)
-        return self.active_program and self.active_program == program_id
 
     def set_active_program(self, program_id):
         if self.active_program is not None and self.active_program.id == program_id:
@@ -218,6 +218,6 @@ class Period(object):
         temperatures = []
         for temp_element in element.findall('temperature'):
             temperature = int(temp_element.text)
-            zone = temp_element['zone']
+            zone = temp_element.attrib['zone']
             temperatures.append((temperature, zone))
         return Period(system, days, start, end, temperatures, id)

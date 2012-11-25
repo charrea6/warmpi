@@ -63,8 +63,7 @@ class HeatingScheduler(Service):
         period.id = None # Ensure we allocate a new period
         ProgramId = kwargs['ProgramId']
         try:
-            if self.programs.add_period(ProgramId, period):
-                self.__schedule_next_event()
+            self.programs.add_period(ProgramId, period)
         except KeyError:
             raise ErrorCode(600)
         except OverlapError:
@@ -75,8 +74,7 @@ class HeatingScheduler(Service):
     def soap_RemovePeriod(self, *args, **kwargs):
         PeriodId = kwargs['PeriodId']
         try:
-            if self.programs.remove_period(PeriodId):
-                self.__schedule_next_event()
+            self.programs.remove_period(PeriodId)
         except KeyError:
             raise ErrorCode(600)
         return {}
