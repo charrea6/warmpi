@@ -7,7 +7,8 @@ import logging
 import daemon
 
 LOG_PATH = '/var/log/warmpi'
-BASE_PATH = '/var/run/warmpi'
+RUN_PATH = '/var/run/warmpi'
+LIB_PATH = '/var/lib/warmpi'
 
 class PIDFile(object):
     def __init__(self, filename):
@@ -23,24 +24,29 @@ class PIDFile(object):
 class SubSystem(object):
     def __init__(self, name, user, daemonize):
         self.name = name
-        self.dir = os.path.join(BASE_PATH, name)
+        self.run_dir = os.path.join(RUN_PATH, name)
+        self.lib_dir = os.path.join(LIB_PATH, name)
         self.server = None
         self._shelf = None
         self.daemon = None
         if daemonize:
             out = file(os.path.join(LOG_PATH, '%s.stdout.log' % name), 'w')
             err = file(os.path.join(LOG_PATH, '%s.stderr.log' % name), 'w')
-            self.daemon = daemon.DaemonContext(working_directory=self.dir,
+            self.daemon = daemon.DaemonContext(working_directory=self.run_dir,
                                  stdout=out,
                                  stderr=err,              
-                                 pidfile=PIDFile(os.path.join(self.dir, '%s.pid' % name)))
+                                 pidfile=PIDFile(os.path.join(self.run_dir, '%s.pid' % name)))
             self.daemon.open()
 
         # Create run directory
-        if not os.path.exists(self.dir):
-            os.makedirs(self.dir)
+        if not os.path.exists(self.run_dir):
+            os.makedirs(self.run_dir)
 
-        os.chdir(self.dir)
+        os.chdir(self.run_dir)
+
+        # Create lib directory
+        if not os.path.exists(self.lib_dir):
+            os.makedirs(self.lib_dir)
 
         # Initialise logging
         if not os.path.exists(LOG_PATH):
@@ -59,13 +65,14 @@ class SubSystem(object):
 
         if os.getuid() == 0:
             p = pwd.getpwnam(user)
-            os.chown(self.dir, p.pw_uid, p.pw_gid)
+            os.chown(self.run_dir, p.pw_uid, p.pw_gid)
+            os.chown(self.lib_dir, p.pw_uid, p.pw_gid)
 
             # Drop privileges
             os.setgid(p.pw_gid)
             os.setuid(p.pw_uid)
             os.environ['USER'] = user
-            os.environ['HOME'] = self.dir
+            os.environ['HOME'] = self.run_dir
 
         from brisa.core.reactors._select import SelectReactor
         self.reactor = SelectReactor()
@@ -77,14 +84,14 @@ class SubSystem(object):
     @property
     def shelf(self):
         if self._shelf is None:
-            self._shelf = shelve.open(os.path.join(self.dir, 'shelf'), protocol=-1)
+            self._shelf = shelve.open(os.path.join(self.lib_dir, 'shelf'), protocol=-1)
         return self._shelf
 
     def create_server(self, funcs):
         if self.server is None:
             from warmpi.ipc import IPCServer
 
-            self.server = IPCServer(self.dir, funcs)
+            self.server = IPCServer(self.run_dir, funcs)
         else:
             self.server.funcs = funcs
 
@@ -113,6 +120,6 @@ def get_optparse():
 
 
 def get_client(name):
-    dir = os.path.join(BASE_PATH, name)
+    dir = os.path.join(RUN_PATH, name)
     from warmpi.ipc import IPCClient
     return IPCClient(dir)

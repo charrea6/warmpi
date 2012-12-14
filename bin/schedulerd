@@ -74,7 +74,7 @@ class SchedulerSubSystem(SubSystem):
         self.active_periods = {}
         self.timer = None
         self.systems = {'HW': HWSystem(), 'CH': CHSystem()}
-        self.programs = Programs(os.path.join(self.dir, 'programs.xml'), self.programs_updated)
+        self.programs = Programs(os.path.join(self.lib_dir, 'programs.xml'), self.programs_updated)
 
         from warmpi.schedule.upnp import HeatingController
         self.device = HeatingController(self.programs)
