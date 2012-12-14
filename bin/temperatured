@@ -84,7 +84,7 @@ class TemperatureSubSystem(SubSystem):
         return self.thermostats[thermostat].setpoint
 
     def set_zone_setpoint(self, zone, setpoint):
-        for ts in self.thermostats.values:
+        for ts in self.thermostats.values():
             if ts.zone == zone:
                 ts.setpoint = setpoint
 
