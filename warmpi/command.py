@@ -1,5 +1,8 @@
 import optparse
 
+class UsageError(Exception):
+    pass
+
 def define_command(commands, name, usage,  options=[]):
     def deco(func):
         commands.append(Command(name, options, usage, func))
@@ -21,7 +24,11 @@ def dispatch(commands, args):
             if command.name == args[0]:
                 parser = optparse.OptionParser(usage=command.usage, option_list=command.options)
                 options,args = parser.parse_args(args[1:])
-                command.execute(options, args)
+                try:
+                    command.execute(options, args)
+                except UsageError:
+                    parser.print_usage()
+
                 found = True
                 break
 
