@@ -12,7 +12,6 @@ BASE_PATH = '/var/run/warmpi'
 class PIDFile(object):
     def __init__(self, filename):
         self.filename = filename
-        print 'PID File: ', self.filename
 
     def __enter__(self):
         with open(self.filename, 'w') as f:
