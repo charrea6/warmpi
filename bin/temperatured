@@ -19,7 +19,7 @@ class TemperatureSubSystem(SubSystem):
                             'set_thermostat_zone' : self.set_thermostat_zone,
                             'get_thermostat_zone' : self.get_thermostat_zone,
                             'set_thermostat_setpoint': self.set_thermostat_setpoint,
-                            'get_thermostat_getpoint': self.get_thermostat_getpoint,
+                            'get_thermostat_setpoint': self.get_thermostat_setpoint,
                             'set_zone_setpoint' : self.set_zone_setpoint})
 
     def privileged_init(self):
@@ -80,7 +80,7 @@ class TemperatureSubSystem(SubSystem):
     def set_thermostat_setpoint(self, thermostat, setpoint):
         self.thermostats[thermostat].setpoint = float(setpoint)
     
-    def get_thermostat_getpoint(self, thermostat):
+    def get_thermostat_setpoint(self, thermostat):
         return self.thermostats[thermostat].setpoint
 
     def set_zone_setpoint(self, zone, setpoint):
