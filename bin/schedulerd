@@ -58,8 +58,8 @@ class CHSystem(System):
         import warmpi.temperature.client as temperature
         relay = self.get_relay_client()
         temperature = temperature.LocalClient()
-        for zone, setpoint in self.period.temperatures:
-            temperature.set_zone_setpoint(zone, setpoint)
+        for setpoint, zone in self.period.temperatures:
+            temperature.set_zone_setpoint(zone, setpoint / 100.0)
         relay.set_state('CH', True)
 
     def deactivate(self):
