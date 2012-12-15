@@ -63,7 +63,11 @@ def get_program(options, args):
 @command.define_command(commands, 'active', 'active [<program id>]\nGet/Set active program.')
 def active_program(options, args):
     if len(args) == 0:
-        print 'Active Program Id:',LocalClient().get_active_program().id
+        prog = LocalClient().get_active_program()
+        if prog is None:
+            print 'No active program'
+        else:
+            print 'Active Program Id:',prog.id
     else:
         LocalClient().set_active_program(args[0])
 
