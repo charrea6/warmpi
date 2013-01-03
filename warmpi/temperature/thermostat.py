@@ -34,6 +34,7 @@ class Thermostat(object):
     def _set_zone(self, zone):
         self._zone = zone
         self.shelf[self.sensor.name + '\zone'] = zone
+        self.shelf.sync()
         logging.info('Update zone for sensor %s, new zone %s', self.sensor.name, zone)
 
     zone = property(_get_zone, _set_zone)
@@ -44,6 +45,7 @@ class Thermostat(object):
     def _set_setpoint(self, setpoint):
         self._setpoint = setpoint
         self.shelf[self.sensor.name + '\setpoint'] = setpoint
+        self.shelf.sync()
         logging.info('Update setpoint for sensor %s, new setpoint %f', self.sensor.name, setpoint)
         self.__check_setpoint()
 
