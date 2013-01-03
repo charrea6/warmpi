@@ -86,6 +86,7 @@ class SchedulerSubSystem(SubSystem):
                             'add_program':self.programs.add_program,
                             'remove_program':self.programs.remove_program,
                             'add_period':self.programs.add_period,
+                            'get_period':self.programs.get_period,
                             'remove_period':self.programs.remove_period,
                             'get_active_periods':lambda : self.active_periods.values(),
                             'get_system_active': lambda s: self.systems[s].active,

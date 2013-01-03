@@ -63,6 +63,10 @@ class Programs(object):
         self.programs[program_id].remove_period(period_id)
         self.__save('remove-period', period_id)
 
+    def get_period(self, period_id):
+        program_id,_ = period_id.split(':')
+        return self.programs[program_id].periods[period_id]
+
     def set_active_program(self, program_id):
         if self.active_program is not None and self.active_program.id == program_id:
             return
