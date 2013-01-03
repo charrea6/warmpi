@@ -20,9 +20,9 @@
                     var active_periods = '<table>';
                     for (i = 0; i < r.active_periods.length; i ++){
                         var p = r.active_periods[i];
-                        active_periods += '<tr><td>' + p.start + '</td><td>-</td><td>' + p.end +'</td><td>' + p.system +'</td></tr>'
+                        active_periods += '<tr><td>' + p.start + '</td><td>-</td><td>' + p.end +'</td><td>' + p.system +'</td></tr>';
                     }
-                    active_periods += '</table>'
+                    active_periods += '</table>';
                     $('#active_periods').html(active_periods);
                 }});
             status_GetInfo({success: function(r){
@@ -43,7 +43,7 @@
 </head>
 <body>
     <div data-role="page">
-        <div data-role="header""><h3>WarmPi - Status</h3></div>
+        <div data-role="header"><h3>WarmPi - Status</h3></div>
         <div data-role="content">
             <div class="ui-grid-a">
                 <div class="ui-block-a"><h3>System Status</h3></div>
@@ -62,8 +62,8 @@
                 <div class="ui-block-a">Active Periods</div>
                 <div class="ui-block-b" id="active_periods"></div>
 
-                <div class="ui-block-a"><a href="heating.html">Heating</a></div>
-                <div class="ui-block-b"><a href="hotwater.html">Hot Water</a></div>
+                <div class="ui-block-a"><a href="heating.html" data-ajax="false">Heating</a></div>
+                <div class="ui-block-b"><a href="hotwater.html" data-ajax="false">Hot Water</a></div>
             </div>
         </div>
     </div>

@@ -1,5 +1,6 @@
 import cherrypy
 
+from warmpi.web import no_cache
 from warmpi.relayctrl.client import LocalClient
 
 class Relay(object):
@@ -7,6 +8,7 @@ class Relay(object):
 
     @cherrypy.expose
     @cherrypy.tools.json_out()
+    @no_cache
     def index(self):
         c = LocalClient()
         states = {}
@@ -17,6 +19,7 @@ class Relay(object):
     @cherrypy.expose
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
+    @no_cache
     def default(self, relay):
         if relay not in self.relays:
             raise cherrypy.NotFound()

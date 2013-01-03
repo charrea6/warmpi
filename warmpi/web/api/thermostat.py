@@ -1,11 +1,13 @@
 import cherrypy
 
+from warmpi.web import no_cache
 from warmpi.temperature.client import LocalClient
 
 class Thermostat(object):
     @cherrypy.expose
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
+    @no_cache
     def index(self):
         c = LocalClient()
 
@@ -21,6 +23,7 @@ class Thermostat(object):
     @cherrypy.expose
     @cherrypy.tools.json_in()
     @cherrypy.tools.json_out()
+    @no_cache
     def default(self, *args):
         if len(args) >= 1:
             thermostat = args[0]
