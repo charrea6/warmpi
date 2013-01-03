@@ -3,10 +3,13 @@
 
 import hidapi
 import threading
+import time
+import logging
 
 class OregonWeatherStation(object):
     VENDOR_ID=0x0fde
     PRODUCT_ID=0xca01
+    VALID_PACKET_TIMEOUT = 60.0
     INIT_PACKET = reduce(lambda a,b: a+chr(b), [0x00, 0x20, 0x00, 0x08, 0x01, 0x00, 0x00, 0x00, 0x00], '')
     READY_PACKET = reduce(lambda a,b: a+chr(b), [0x00, 0x01, 0xd0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00], '')
     PACKET_LENGTHS = { 0x41:17, 0x42:12, 0x44:7, 0x46:8, 0x47:5, 0x48:11, 0x60:12}
@@ -17,9 +20,11 @@ class OregonWeatherStation(object):
         self.init()
 
     def init(self):
+        logging.info('Initialising Sensor')
         self.buffer = []
         self.device.write(self.INIT_PACKET)
         self.device.write(self.READY_PACKET)
+        self.__last_valid_packet = time.time()
 
     def __read_byte(self):
         while not self.buffer:
@@ -41,6 +46,7 @@ class OregonWeatherStation(object):
         temp = (data[3] + ((data[4] & 0x0f) << 8)) / 10.0;
         if ((data[4] >> 4) == 0x8):
             temp = -temp
+        logging.info("Sensor %d Temperature %f", sensor, temp)
         self.temperature_updated(sensor, temp)
 
     def read_data(self):
@@ -60,10 +66,16 @@ class OregonWeatherStation(object):
             data.append(self.__read_byte())
             data_len -= 1
 
+        now = time.time()
         if self.__verify_checksum(data) and type == 0x42:
             self.process_temperature(data)
-        # Drop bad packets silently.
-        self.device.write(self.READY_PACKET)
+            self.__last_valid_packet = now
+
+        if now - self.__last_valid_packet > self.VALID_PACKET_TIMEOUT:
+            self.init()
+        else:
+            # Drop bad packets silently.
+            self.device.write(self.READY_PACKET)
 
 class EMS100Sensor(object):
     def __init__(self, name):
